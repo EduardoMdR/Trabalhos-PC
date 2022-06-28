@@ -5,10 +5,12 @@
 
 void * funcao1(void * arg){
   printf("Thread 1\n");
+  pthread_exit(0);   
 }
 
 void * funcao2(void * arg){
   printf("Thread 2\n");
+  pthread_exit(0);   
 }
 
 int main(){
