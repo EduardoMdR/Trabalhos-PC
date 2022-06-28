@@ -1,6 +1,9 @@
 // A solução do problema consiste em direcionar as tarefas para o writer e reader
 // e isso aontece pois o lock_tarefa varia em quem vai executar,
-// Escritores e Leitores entram na fila
+// Quando a tarefa pertence ao Escritor, impedi que crie novos leitores (num_leitores++)
+	// Ou seja, num_leitores vai chegar em zero e vai liberar o bd
+// Quando a tarefa pertence ao Leitor, seu fluxo segue normalmente
+	// E o escritor fica travado
 
 #include "stdio.h"
 #include "unistd.h"
@@ -9,8 +12,8 @@
 
 #define TRUE 1
 
-#define NE 10																// Número de escritores
-#define NL 20 															// Número de leitores
+#define NE 10																	// Número de escritores
+#define NL 20 																// Número de leitores
 
 pthread_mutex_t lock_bd = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t lock_nl = PTHREAD_MUTEX_INITIALIZER;
@@ -32,13 +35,13 @@ int main() {
 	int i;
   int *id;
   
-  for (i = 0; i < NL ; i++) {								// Criando leitores
+  for (i = 0; i < NL ; i++) {									// Criando leitores
 	  id = (int *) malloc(sizeof(int));
     *id = i;
 	 	pthread_create(&r[i], NULL, reader, (void *) (id));
 	}
 
-	for (i = 0; i< NE; i++) {									// Criando escritores
+	for (i = 0; i< NE; i++) {										// Criando escritores
 	  id = (int *) malloc(sizeof(int));
     *id = i;
 		pthread_create(&w[i], NULL, writer, (void *) (id));
@@ -51,27 +54,27 @@ int main() {
 void * reader(void *arg) {
 	int i = *((int *) arg);
 
-	while(TRUE) {															// Repete para sempre
-		pthread_mutex_lock(&lock_nl);
-			num_leitores++;
-			if(num_leitores == 1){
-				pthread_mutex_unlock(&lock_tarefa);
-				pthread_mutex_lock(&lock_bd);				// Lock em Bd
-			}
-    pthread_mutex_unlock(&lock_nl);
+	while(TRUE) {																// Repete para sempre
+		pthread_mutex_lock(&lock_tarefa);					// Atribuo tarefa ao leitor
+			pthread_mutex_lock(&lock_nl);						// So atribuo leitores (mum_leitores++) se a tarefa não for da escrita
+				num_leitores++;
+			pthread_mutex_unlock(&lock_tarefa);
+				if(num_leitores == 1){
+					pthread_mutex_lock(&lock_bd);				// Lock em Bd
+				}
+			pthread_mutex_unlock(&lock_nl);
+		pthread_mutex_unlock(&lock_tarefa);
 
-    read_data_base(i);											// Acesso aos dados (Crítico)
+    read_data_base(i);												// Acesso aos dados (Crítico)
 
     pthread_mutex_lock(&lock_nl);
 			num_leitores--;
 			if(num_leitores == 0){
-				
-				pthread_mutex_unlock(&lock_bd);			// Unlock em Bd
-				pthread_mutex_unlock(&lock_tarefa);
+				pthread_mutex_unlock(&lock_bd);				// Unlock em Bd
 			}
     pthread_mutex_unlock(&lock_nl);
 
-		use_data_read(i);												// Região não crítica
+		use_data_read(i);													// Região não crítica
 	}
   pthread_exit(0);
 }
@@ -79,13 +82,13 @@ void * reader(void *arg) {
 void * writer(void *arg) {
 	int i = *((int *) arg);
 	
-	while(TRUE) {															// Repete para sempre
-		think_up_data(i);        								// Região não crítica
-		pthread_mutex_lock(&lock_tarefa);
-    pthread_mutex_lock(&lock_bd);
-			write_data_base(i);      							// Atualiza os dados (Crítico)
-		pthread_mutex_unlock(&lock_bd);
-		pthread_mutex_lock(&lock_tarefa);
+	while(TRUE) {																// Repete para sempre
+		think_up_data(i);        									// Região não crítica
+		pthread_mutex_lock(&lock_tarefa);					// Atribuo tarefa ao escritor
+			pthread_mutex_lock(&lock_bd);
+				write_data_base(i);      							// Atualiza os dados (Crítico)
+			pthread_mutex_unlock(&lock_bd);
+		pthread_mutex_unlock(&lock_tarefa);
   }
   pthread_exit(0);
 }
