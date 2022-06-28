@@ -1,3 +1,7 @@
+// A solução do problema consiste em direcionar as tarefas para o writer e reader
+// e isso aontece pois o lock_tarefa varia em quem vai executar,
+// Escritores e Leitores entram na fila
+
 #include "stdio.h"
 #include "unistd.h"
 #include "stdlib.h"
@@ -5,11 +9,13 @@
 
 #define TRUE 1
 
-#define NE 3																// Número de escritores
-#define NL 10 															// Número de leitores
+#define NE 10																// Número de escritores
+#define NL 20 															// Número de leitores
 
 pthread_mutex_t lock_bd = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t lock_nl = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t lock_tarefa = PTHREAD_MUTEX_INITIALIZER;
+// Responsável pelo escalonamento de tarefas
 
 int num_leitores = 0;
 
@@ -49,21 +55,23 @@ void * reader(void *arg) {
 		pthread_mutex_lock(&lock_nl);
 			num_leitores++;
 			if(num_leitores == 1){
+				pthread_mutex_unlock(&lock_tarefa);
 				pthread_mutex_lock(&lock_bd);				// Lock em Bd
 			}
     pthread_mutex_unlock(&lock_nl);
 
-    read_data_base(i);											// acesso aos dados (Crítico)
+    read_data_base(i);											// Acesso aos dados (Crítico)
 
     pthread_mutex_lock(&lock_nl);
 			num_leitores--;
-			if(num_leitores == 0){ 
+			if(num_leitores == 0){
+				
 				pthread_mutex_unlock(&lock_bd);			// Unlock em Bd
+				pthread_mutex_unlock(&lock_tarefa);
 			}
     pthread_mutex_unlock(&lock_nl);
 
-    /* região não crítica */
-		use_data_read(i);
+		use_data_read(i);												// Região não crítica
 	}
   pthread_exit(0);
 }
@@ -73,29 +81,31 @@ void * writer(void *arg) {
 	
 	while(TRUE) {															// Repete para sempre
 		think_up_data(i);        								// Região não crítica
+		pthread_mutex_lock(&lock_tarefa);
     pthread_mutex_lock(&lock_bd);
 			write_data_base(i);      							// Atualiza os dados (Crítico)
 		pthread_mutex_unlock(&lock_bd);
+		pthread_mutex_lock(&lock_tarefa);
   }
   pthread_exit(0);
 }
 
 void read_data_base(int i) {
-	printf("Leitor %d está lendo os dados! Número de leitores: %d\n", i,num_leitores);
+	printf("Leitor %d esta lendo os dados! Numero de leitores: %d\n", i,num_leitores);
 	sleep(rand() % 5);
 }
 
 void use_data_read(int i) {
-	printf("Leitor %d está usando os dados lidos! Número de leitores: %d\n", i,num_leitores);
+	printf("Leitor %d esta usando os dados lidos! Numero de leitores: %d\n", i,num_leitores);
 	sleep(rand() % 5);
 }
 
 void think_up_data(int i) {
-	printf("Escritor %d está pensando no que escrever!\n", i);
+	printf("Escritor %d esta pensando no que escrever!\n", i);
 	sleep(rand() % 5);
 }
 
 void write_data_base(int i) {
-	printf("Escritor %d está escrevendo os dados! Número de leitores: %d\n", i,num_leitores);
-	sleep( rand() % 5 + 15);
+	printf("Escritor %d esta escrevendo os dados! Numero de leitores: %d\n", i,num_leitores);
+	sleep( rand() % 5 + 5);
 }
