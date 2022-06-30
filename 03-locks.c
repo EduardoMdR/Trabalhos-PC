@@ -13,7 +13,6 @@
 
 int contador = 0;
 int contador_unsafe = 0;
-int i = 0;
 
 // Criando um Lock
 pthread_mutex_t lock_contador = PTHREAD_MUTEX_INITIALIZER;
@@ -22,6 +21,7 @@ void * incrementar(void *arg){
   int id = *((int *) arg); 
   printf("Criou um pthread com id = %d \n",id);
 
+  int i = 0;
   for(i = 0; i < X; i++){
     // Quando uma thread acessar a linha 26, nenhuma outra pode acessar
     pthread_mutex_lock(&lock_contador);
@@ -39,6 +39,7 @@ int main(){
 
   pthread_t thread[N];
   int * id;
+  int i = 0;
 
   // Criando N thread, mandando executar incrementar(passando id)
   for(i = 0; i < N; i++){
