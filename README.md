@@ -2,7 +2,7 @@
 
 Para executar o programa preciso compilar utilizando gcc e as tag's para controle de desenvolvimento
 
-``` gcc .\nome_arquivo.c -o teste ```
+``` gcc .\nome_arquivo.c -pthread -o teste ```
 
 E para rodar o programa:
 
