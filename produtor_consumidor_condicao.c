@@ -10,6 +10,10 @@
 void * produtor(void * meuid);
 void * consumidor (void * meuid);
 
+pthread_cond_t cons_cond = PTHREAD_COND_INITIALIZER;        // condição consumidor
+pthread_cond_t prod_cond = PTHREAD_COND_INITIALIZER;        // condição produtor
+pthread_mutex_t lock_buffer = PTHREAD_MUTEX_INITIALIZER;    // controla acesso ao buffer
+int buffer = 0;
 
 void main(argc, argv)
 int argc;
@@ -47,13 +51,40 @@ char *argv[];{
 }
 
 void * produtor (void* pi){
+  int i = *((int *)pi);
   while(1){
+    pthread_mutex_lock(&lock_buffer);                       // pegando acesso ao buffer
+      while (buffer == N){                                  // Se o buffer estiver cheio, o produtor vai esperar
+        pthread_cond_wait(&prod_cond, &lock_buffer);
+      }
+      buffer++;
+      printf("Item inserido do buffer, tamanho = %d\n", buffer);
+
+      if (buffer == 1) {
+        pthread_cond_signal(&cons_cond);
+      }
+    pthread_mutex_unlock(&lock_buffer);
+    sleep(rand()%(i+1));
   }
   pthread_exit(0);
 }
 
 void * consumidor (void* pi){
+  int i = *((int *)pi);
   while(1){
+    pthread_mutex_lock(&lock_buffer);                       // pegando acesso ao buffer
+      while (buffer == 0) {                                 // Se o buffer estiver vazio, o consumidor vai esperar
+        pthread_cond_wait(&cons_cond, &lock_buffer);
+      }
+      buffer--;
+      printf("Item removido do buffer, tamanho = %d\n", buffer);
+
+      if (buffer == N-1){
+        printf("Acorda produtor! Tamanho do buffer = %d\n", buffer);
+        pthread_cond_signal(&prod_cond);
+      }
+    pthread_mutex_unlock(&lock_buffer);
+    sleep(rand()%(i+1));
   }
   pthread_exit(0);
 }
